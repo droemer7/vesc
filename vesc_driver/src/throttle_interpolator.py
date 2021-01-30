@@ -7,7 +7,9 @@ from std_msgs.msg import Float64
 
 class InterpolateThrottle:
     def __init__(self):
-        car_name = rospy.get_param("~car_name", "/car")
+        car_name = rospy.get_param("~car_name").rstrip("/")
+        if len(car_name) > 0:
+            car_name = "/" + car_name
 
         # Allow our topics to be dynamic.
         self.rpm_input_topic = rospy.get_param(
