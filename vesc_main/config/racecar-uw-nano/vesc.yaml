@@ -21,7 +21,7 @@ vesc_to_odom/publish_tf: false
 # chassis_length is length of car from axle to axle
 chassis_length: 0.29
 
-# car wheelbase is width of car from midpoint to midpoint of each wheel 
+# car wheelbase is width of car from midpoint to midpoint of each wheel
 wheelbase: 0.225
 
 vesc_driver:
