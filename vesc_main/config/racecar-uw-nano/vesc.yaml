@@ -19,9 +19,11 @@ steering_angle_to_servo_offset: 0.555
 vesc_to_odom/publish_tf: false
 
 # chassis_length is length of car from axle to axle
+# urdf model: 0.2965
 chassis_length: 0.29
 
 # car wheelbase is width of car from midpoint to midpoint of each wheel
+# urdf model: 0.23
 wheelbase: 0.225
 
 vesc_driver:
