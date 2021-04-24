@@ -3,6 +3,7 @@
 #include "vesc_ackermann/vesc_to_odom.h"
 
 #include <cmath>
+#include <float.h>
 
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/TransformStamped.h>
@@ -14,12 +15,13 @@ template <typename T>
 inline bool getRequiredParam(const ros::NodeHandle& nh, std::string name, T& value);
 
 VescToOdom::VescToOdom(ros::NodeHandle nh, ros::NodeHandle private_nh) :
-  odom_frame_("odom"), base_frame_("base_link"),
+  odom_frame_("odom"), base_frame_("base_link"), wheel_back_left_frame_("back_left/wheel_link"),
   use_servo_cmd_(true), publish_tf_(false), x_(0.0), y_(0.0), yaw_(0.0)
 {
   // get ROS parameters
   private_nh.param("odom_frame", odom_frame_, odom_frame_);
   private_nh.param("base_frame", base_frame_, base_frame_);
+  private_nh.param("wheel_back_left_frame", wheel_back_left_frame_, wheel_back_left_frame_);
   private_nh.param("use_servo_cmd_to_calc_angular_velocity", use_servo_cmd_, use_servo_cmd_);
   if (!getRequiredParam(nh, "speed_to_erpm_gain", speed_to_erpm_gain_))
     return;
@@ -34,6 +36,26 @@ VescToOdom::VescToOdom(ros::NodeHandle nh, ros::NodeHandle private_nh) :
       return;
   }
   private_nh.param("publish_tf", publish_tf_, publish_tf_);
+
+  // Get offset from back of car to the origin for odometry calculations
+  tf::StampedTransform tf_base_to_wheel_back_left;
+  try {
+    tf_listener_.waitForTransform(wheel_back_left_frame_,
+                                  base_frame_,
+                                  ros::Time(0),
+                                  ros::Duration(5.0)
+                                 );
+    tf_listener_.lookupTransform(wheel_back_left_frame_,
+                                 base_frame_,
+                                 ros::Time(0),
+                                 tf_base_to_wheel_back_left
+                                );
+  }
+  catch (tf::TransformException & except) {
+    ROS_ERROR("VESC to Odom: %s", except.what());
+    exit;
+  }
+  chassis_base_to_back_x_ = tf_base_to_wheel_back_left.getOrigin().x();
 
   // create odom publisher
   odom_pub_ = nh.advertise<nav_msgs::Odometry>("odom", 10);
@@ -61,9 +83,16 @@ void VescToOdom::vescStateCallback(const vesc_msgs::VescStateStamped::ConstPtr& 
   double current_speed = ( state->state.speed - speed_to_erpm_offset_ ) / speed_to_erpm_gain_;
   double current_steering_angle(0.0), current_angular_velocity(0.0);
   if (use_servo_cmd_) {
-    current_steering_angle =
-      ( last_servo_cmd_->data - steering_to_servo_offset_ ) / steering_to_servo_gain_;
-    current_angular_velocity = current_speed * tan(current_steering_angle) / chassis_length_;
+    current_steering_angle = ( last_servo_cmd_->data - steering_to_servo_offset_ ) / steering_to_servo_gain_;
+    double tan_current_steering_angle = tan(current_steering_angle);
+    double cos_slip_angle = cos(atan2(chassis_base_to_back_x_ * tan_current_steering_angle, chassis_length_));
+
+    if (   abs(tan_current_steering_angle) > DBL_EPSILON
+        && abs(cos_slip_angle) > DBL_EPSILON
+       ) {
+      double icr_radius = chassis_length_ / (cos_slip_angle * tan_current_steering_angle);
+      current_angular_velocity = current_speed / icr_radius;
+    }
   }
 
   // use current state as last state if this is our first time here

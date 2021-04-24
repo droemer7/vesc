@@ -8,6 +8,7 @@
 #include <std_msgs/Float64.h>
 #include <boost/shared_ptr.hpp>
 #include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
 
 namespace vesc_ackermann
 {
@@ -22,12 +23,15 @@ private:
   // ROS parameters
   std::string odom_frame_;
   std::string base_frame_;
+  std::string wheel_back_left_frame_;
+
   /** State message does not report servo position, so use the command instead */
   bool use_servo_cmd_;
   // conversion gain and offset
   double speed_to_erpm_gain_, speed_to_erpm_offset_;
   double steering_to_servo_gain_, steering_to_servo_offset_;
   double chassis_length_;
+  double chassis_base_to_back_x_;
   bool publish_tf_;
 
   // odometry state
@@ -40,6 +44,7 @@ private:
   ros::Subscriber vesc_state_sub_;
   ros::Subscriber servo_sub_;
   boost::shared_ptr<tf::TransformBroadcaster> tf_pub_;
+  tf::TransformListener tf_listener_;
 
   // ROS callbacks
   void vescStateCallback(const vesc_msgs::VescStateStamped::ConstPtr& state);

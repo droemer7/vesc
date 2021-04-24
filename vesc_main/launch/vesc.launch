@@ -19,8 +19,13 @@
   </node>
 
   <node pkg="vesc_driver" type="throttle_interpolator.py" name="throttle_interpolator">
-      <param name="car_name" value="$(arg car_name)" />
+    <param name="car_name" value="$(arg car_name)" />
   </node>
   <node pkg="vesc_driver" type="vesc_driver_node" name="vesc_driver" respawn="true"/>
-  <node pkg="vesc_ackermann" type="vesc_to_odom_node" name="vesc_to_odom"/>
+  <node pkg="vesc_ackermann" type="vesc_to_odom_node" name="vesc_to_odom">
+    <param name="odom_frame"            type="string" value="$(arg car_name)/odom"/>
+    <param name="base_frame"            type="string" value="$(arg car_name)/base_link"/>
+    <param name="wheel_back_left_frame" type="string" value="$(arg car_name)/back_left/wheel_link"/>
+  </node>
+
 </launch>
