@@ -3,10 +3,11 @@
 #include "vesc_ackermann/vesc_to_odom.h"
 
 #include <cmath>
-#include <float.h>
 
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/TransformStamped.h>
+
+static const double EPSILON = 1e-6;
 
 namespace vesc_ackermann
 {
@@ -43,7 +44,8 @@ VescToOdom::VescToOdom(ros::NodeHandle nh, ros::NodeHandle private_nh) :
     tf_listener_.waitForTransform(wheel_back_left_frame_,
                                   base_frame_,
                                   ros::Time(0),
-                                  ros::Duration(5.0)
+                                  ros::Duration(15.0),
+                                  ros::Duration(1.0)
                                  );
     tf_listener_.lookupTransform(wheel_back_left_frame_,
                                  base_frame_,
@@ -87,8 +89,8 @@ void VescToOdom::vescStateCallback(const vesc_msgs::VescStateStamped::ConstPtr& 
     double tan_current_steering_angle = tan(current_steering_angle);
     double cos_slip_angle = cos(atan2(chassis_base_to_back_x_ * tan_current_steering_angle, chassis_length_));
 
-    if (   abs(tan_current_steering_angle) > DBL_EPSILON
-        && abs(cos_slip_angle) > DBL_EPSILON
+    if (   abs(tan_current_steering_angle) > EPSILON
+        && abs(cos_slip_angle) > EPSILON
        ) {
       double icr_radius = chassis_length_ / (cos_slip_angle * tan_current_steering_angle);
       current_angular_velocity = current_speed / icr_radius;
